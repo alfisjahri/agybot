@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="agybot_dark">#1a1a1a</color>
+    <color name="splash_background">#1a1a1a</color>
+    <color name="accent">#007cf7</color>
+    <color name="teal">#2FA08C</color>
+</resources>

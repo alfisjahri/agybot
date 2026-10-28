@@ -1,0 +1,16 @@
+# Sesuaikan User, WorkingDirectory, dan ExecStart dengan lokasi install.
+[Unit]
+Description=AgyBot - bot framework with agy CLI (Antigravity Pro)
+After=network.target
+
+[Service]
+Type=simple
+User=muse
+WorkingDirectory=/opt/agybot
+Environment=AGYBOT_PORT=8898
+ExecStart=/opt/agybot/venv/bin/python /opt/agybot/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

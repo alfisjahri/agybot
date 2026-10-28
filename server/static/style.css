@@ -1,0 +1,594 @@
+/* ============================================================
+   AgyBot — Design System (Phase 7)
+   ASIMILASI DS-Bot + OpenBot, tema SANGAT GELAP seperti
+   aplikasi Muse / OpenBot (bukan navy biru lagi).
+
+   Diambil dari OpenBot (terverifikasi dari app.asar, tema gelap):
+     canvas #1a1a1a, sidebar #1a1a1a, surface #212121,
+     raised #242424, border rgba(255,255,255,0.035),
+     teks #ffffff / #dcdcdc / #979797, aksen #007cf7,
+     hover rgba(255,255,255,0.06).
+   Diambil dari DS-Bot:
+     layout sidebar 280px + daftar bot, floating header pill,
+     kolom transkrip max 960px, composer rounded + tombol kirim bulat.
+   Diambil dari OpenBot (pesan):
+     balasan bot = BARIS penuh (avatar + nama + isi, tanpa bubble),
+     pesan user = bubble kanan.
+   Bot picker MINIMALIS (Alfi: opsi bot di atas terlalu makan tempat):
+     sidebar desktop = avatar + nama saja (tanpa tagline/chip);
+     strip HP = avatar bulat + nama kecil, tanpa kartu.
+   Self-contained, no CDN.
+   ============================================================ */
+:root {
+  --bg: #1a1a1a;
+  --sidebar: #1a1a1a;
+  --card: #212121;
+  --raised: #242424;
+  --surface-2: #2e2e2e;
+  --bubble: #212121;
+  --text: #ffffff;
+  --text-2: #dcdcdc;
+  --text-3: #979797;
+  --user: #2e2e2e;
+  --user-text: #ffffff;
+  --accent: #007cf7;
+  --accent-dark: #0068d1;
+  --accent-soft: rgba(0, 124, 247, .16);
+  --accent-ink: #ffffff;
+  --line: rgba(255, 255, 255, .06);
+  --line-2: rgba(255, 255, 255, .12);
+  --border: rgba(255, 255, 255, .06);
+  --hover: rgba(255, 255, 255, .06);
+  --active: rgba(0, 124, 247, .16);
+  --tag-bg: rgba(255, 255, 255, .08);
+  --tag-ink: #dcdcdc;
+  --green: #31cf76;
+  /* Warna karakter DS-Bot (INKS[*][1] dari ds-bot inks.js, tema gelap) */
+  --bt-ink-black: #FFFFFF; --bt-ink-brown: #855C36; --bt-ink-red: #E02135;
+  --bt-ink-orange: #FF6700; --bt-ink-yellow: #FF9800; --bt-ink-green: #009957;
+  --bt-ink-cyan: #00A592; --bt-ink-blue: #0E74E0; --bt-ink-violet: #804EE0;
+  --bt-ink-magenta: #E02A88; --bt-ink-gray: #777777; --bt-ink-aurora: #2EE6E0;
+  --green-soft: rgba(49, 207, 118, .14);
+  --amber: #ff9412;
+  --amber-soft: rgba(255, 148, 18, .14);
+  --red: #ff6b6b;
+  --red-soft: rgba(255, 107, 107, .13);
+  --blue: #007cf7;
+  --blue-soft: rgba(0, 124, 247, .13);
+  --radius: 12px;
+  --radius-sm: 10px;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+html, body { height: 100%; height: 100vh; height: 100dvh; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.55;
+  display: flex; flex-direction: column;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+img { max-width: 100%; }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 12px; background: var(--line-2) content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+
+/* ---------- Topbar (Phase 8): brand + nav di atas, semua di-center ----------
+   Nav (Chat / Routines / Usage & Kuota) pindah dari sidebar ke sini,
+   gabung dengan header AgyBot. */
+.topbar { flex: none; background: var(--bg); border-bottom: 1px solid var(--line); }
+.topbar-inner {
+  display: flex; align-items: center; justify-content: center; gap: 22px;
+  max-width: 960px; margin: 0 auto; padding: 7px 12px;
+}
+.topbar-brand { display: flex; align-items: center; gap: 9px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 16px; }
+.topbar-brand:hover { text-decoration: none; }
+.topbar-brand img { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; }
+.topbar-nav { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.topbar-nav a {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 12px; border-radius: 999px; color: var(--text-2);
+  font-size: 13.5px; font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.topbar-nav a:hover { background: var(--hover); color: var(--text); text-decoration: none; }
+.topbar-nav a.active { background: var(--active); color: var(--text); }
+.topbar-nav a .ico { display: inline-flex; }
+.topbar-nav a .ico svg { width: 16px; height: 16px; display: block; }
+
+/* ---------- Ikon SVG line (Phase 8, tambahan Alfi 18:15) ----------
+   Satu gaya konsisten ala Feather (MIT): stroke tipis 1.8, satu warna
+   (currentColor), tanpa emoji. Ukuran per tempat pemakaian. */
+.bt-round svg { width: 18px; height: 18px; display: block; }
+#composer .attach svg { width: 19px; height: 19px; display: block; }
+#composer button[type="submit"] svg { width: 15px; height: 15px; display: block; }
+.btn svg { width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 5px; }
+.pill svg { width: 12px; height: 12px; display: inline-block; vertical-align: -2px; margin-right: 4px; }
+
+/* ---------- Shell: sidebar 280px + main (DS-Bot) ---------- */
+.dsb-frame { display: grid; grid-template-columns: 280px minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+
+/* ---------- Sidebar (OpenBot: sama gelap dengan canvas) ---------- */
+.dsb-side {
+  position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  padding: 0 10px 6px; background: var(--sidebar);
+  border-right: 1px solid var(--line); box-sizing: border-box;
+  overflow: hidden;
+}
+.dsb-side-top {
+  display: flex; align-items: center; gap: 8px; justify-content: flex-end;
+  padding: 12px 2px 10px;
+}
+.bt-round {
+  flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%;
+  background: none; display: inline-grid; place-items: center; cursor: pointer;
+  color: var(--text-3); font-size: 16px; line-height: 1;
+}
+.bt-round:hover { background: var(--hover); color: var(--text); }
+.dsb-side-list { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; margin: 0 -10px 0 -2px; padding-left: 2px; }
+.bt-list { overflow-x: hidden; overflow-y: auto; flex: 1; }
+.list-label { display: none; }
+
+/* Bot picker MINIMALIS (Phase 7): avatar + nama saja.
+   Tagline/chip/effort TIDAK tampil di daftar — tagline ada di pill
+   header + settings. Baris ramping 48px, bukan kartu besar. */
+.bot-item {
+  display: flex; gap: 10px; align-items: center;
+  padding: 6px 10px; border-radius: 10px; cursor: pointer;
+  margin: 0 4px 1px; border: 0; background: none; width: calc(100% - 8px);
+  text-align: left; color: var(--text);
+}
+.bot-item:hover { background: var(--hover); }
+.bot-item.active { background: var(--active); }
+.bot-item .avatar, .bot-item .avatar-img, .bot-item .bt-mark { width: 36px; height: 36px; flex-shrink: 0; }
+.bot-item .who { min-width: 0; flex: 1; }
+.bot-item .name-row { display: flex; align-items: center; gap: 6px; }
+.bot-item .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.bot-item .tagline, .bot-item .preview { display: none; }
+.bot-item .meta { display: none; }
+.chip {
+  display: inline-block; font-size: 11px; font-weight: 600; color: var(--tag-ink);
+  background: var(--tag-bg); padding: 1px 7px; border-radius: 999px; white-space: nowrap;
+}
+.bt-unread {
+  flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  margin-left: auto; align-self: center;
+}
+
+.dsb-side-foot { display: flex; align-items: center; gap: 9px; padding: 8px 6px 6px; border-top: 1px solid var(--line); }
+.dsb-side-foot .who { min-width: 0; flex: 1; }
+.dsb-side-foot .name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dsb-side-foot .sub { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Avatar: karakter hidup (face + mata + mulut + ikon) ----------
+   Wajah karakter sungguhan — mata ekspresif (tiap template beda),
+   mulut, pipi, ikon template kecil di bawah. Mata berkedip,
+   avatar bot aktif "bernapas", dot hijau berdenyut: bot terasa HIDUP. */
+.avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.avatar svg { display: block; width: 100%; height: 100%; }
+.avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.avatar .av-eyes { transform-box: fill-box; transform-origin: center; animation: av-blink 4.8s infinite; }
+@keyframes av-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.06); } }
+.bot-item.active .avatar { animation: av-bob 3.4s ease-in-out infinite; }
+@keyframes av-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+.dot.live { position: relative; }
+.dot.live::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid var(--green); opacity: .7; animation: dot-pulse 2.2s ease-out infinite;
+}
+@keyframes dot-pulse { 0% { transform: scale(.6); opacity: .8; } 70% { transform: scale(1.5); opacity: 0; } 100% { transform: scale(1.5); opacity: 0; } }
+/* ---------- Avatar karakter DS-Bot (.bt-mark, Phase 8) ----------
+   Port dari ds-bot/src/client/styles.js (Apache 2.0): mata = lubang
+   mask, berkedip; badan "bernapas"/bergerak sesuai state. */
+.bt-mark { display: inline-block; flex: none; position: relative; line-height: 0; }
+.bt-mark svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.bt-mark .bt-b, .bt-mark .bt-eye, .bt-mark .bt-eyes, .bt-mark .bt-gaze { transform-box: fill-box; }
+.bt-mark .bt-b { transform-origin: 50% 100%; }
+.bt-mark .bt-eye, .bt-mark .bt-eyes { transform-origin: center; }
+.bt-mark[data-live][data-state="idle"] .bt-eye { animation: bt-blink-idle 5s linear infinite; }
+.bt-mark[data-live][data-state="thinking"] .bt-b { animation: bt-ponder 2.2s ease-in-out infinite; }
+.bt-mark[data-live][data-state="thinking"] .bt-eyes { animation: bt-squint 2.2s ease-in-out infinite; }
+.bt-mark[data-live][data-state="working"] .bt-b { animation: bt-bob 1.6s ease-in-out infinite; }
+.bt-mark[data-live][data-state="working"] .bt-eye { animation: bt-blink 2.4s ease-in-out infinite; }
+.bot-item.active .bt-mark { animation: av-bob 3.4s ease-in-out infinite; }
+.dsb-head.typing .bt-pill .bt-mark { animation: av-bob .9s ease-in-out infinite; }
+/* Idle clip DS-Bot: dua kedipan .26s (lid ke 3%, lalu overshoot 6%) */
+@keyframes bt-blink-idle { 0%, 29.6%, 35%, 69.2%, 74.6%, 100% { transform: scaleY(1); } 32.2%, 71.8% { transform: scaleY(.03); } 33.8%, 73.4% { transform: scaleY(1.06); } }
+@keyframes bt-blink { 0%, 42%, 50%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.03); } 48% { transform: scaleY(1.06); } }
+@keyframes bt-bob { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-4%) rotate(-5deg); } 65% { transform: translateY(0) rotate(4deg); } }
+@keyframes bt-ponder { 0%, 100% { transform: translateY(0) rotate(4deg); } 50% { transform: translateY(-3%) rotate(7deg); } }
+@keyframes bt-squint { 0%, 100% { transform: translate(0, -4%) scaleY(.7); } 50% { transform: translate(5%, -5%) scaleY(.78); } }
+@media (prefers-reduced-motion: reduce) {
+  .avatar .av-eyes, .bot-item.active .avatar, .dot.live::after,
+  .dsb-head.typing .bt-pill .avatar, .bt-mark * { animation: none; }
+}
+
+/* ---------- Main column ---------- */
+.dsb-main { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
+.dsb-main-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+
+/* Floating header pill (DS-Bot): avatar + nama + chip model·effort */
+.dsb-head { position: absolute; top: 0; left: 0; right: 0; z-index: 8; display: flex; justify-content: center; padding: 6px 0 0; pointer-events: none; }
+.dsb-head #bot-header { display: flex; justify-content: center; width: 100%; min-width: 0; }
+.dsb-head::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 88px;
+  background: linear-gradient(to bottom, var(--bg) 55%, rgba(26, 26, 26, 0));
+  pointer-events: none; z-index: -1;
+}
+.bt-pill {
+  pointer-events: auto; display: inline-flex; align-items: center; gap: 8px;
+  max-width: min(640px, calc(100% - 24px));
+  padding: 5px 12px 5px 6px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: var(--raised); box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+  cursor: pointer; color: var(--text); font-size: 14px; font-weight: 600;
+}
+.bt-pill:hover { border-color: var(--text-3); }
+.bt-pill .avatar, .bt-pill .avatar-img, .bt-pill .bt-mark { width: 26px; height: 26px; flex-shrink: 0; }
+.bt-pill-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt-pill .chip { flex-shrink: 0; }
+.bt-pill-go { color: var(--text-3); font-size: 13px; }
+.dsb-head.typing .bt-pill { border-color: var(--accent); }
+.dsb-head.typing .bt-pill .avatar { animation: av-bob .9s ease-in-out infinite; }
+
+/* ---------- Chat ---------- */
+#chat { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.dsb-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; margin-right: 2px; padding: 76px 11px 16px 16px; }
+.dsb-scroll::-webkit-scrollbar { width: 5px; }
+.dsb-scroll::-webkit-scrollbar-thumb { border: 0; border-radius: 5px; background: var(--line-2); }
+.dsb-column { max-width: min(960px, 100%); margin: 0 auto; }
+#messages { display: flex; flex-direction: column; gap: 14px; }
+
+/* Pesan user: bubble kanan (OpenBot: user = bubble, bot = baris polos) */
+.msg {
+  max-width: 80%; padding: 10px 14px; border-radius: 18px;
+  line-height: 1.6; font-size: 14.5px; overflow-wrap: anywhere;
+  animation: fadein .18s ease;
+}
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.msg.user { align-self: flex-end; background: var(--user); color: var(--user-text); border-bottom-right-radius: 6px; }
+.msg .time { display: block; margin-top: 6px; font-size: 11px; color: var(--text-3); }
+.msg.user .time { color: rgba(255, 255, 255, .55); }
+.msg .usage-line { display: block; margin-top: 4px; font-size: 11px; color: var(--text-3); }
+.msg.user .usage-line { color: rgba(255, 255, 255, .55); }
+.msg img.attached { display: block; max-width: 100%; max-height: 300px; border-radius: 10px; margin-bottom: 8px; }
+
+/* Balasan bot: BARIS PENUH ala OpenBot — avatar + nama + isi, TANPA bubble.
+   Bot terasa seperti orang yang sedang ngobrol, bukan kotak. */
+.msg.assistant {
+  align-self: stretch; max-width: 100%;
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 2px 0; background: none; border-radius: 0;
+}
+.msg.assistant > .avatar, .msg.assistant > .avatar-img, .msg.assistant > .bt-mark { width: 30px; height: 30px; margin-top: 2px; flex-shrink: 0; }
+.msg.assistant .msg-body { flex: 1; min-width: 0; }
+.msg.assistant .msg-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.msg.assistant .msg-name .msg-tag { font-weight: 400; color: var(--text-3); margin-left: 6px; font-size: 12px; }
+
+/* markdown inside assistant replies */
+.msg .md h1, .msg .md h2, .msg .md h3 { margin: 0; font-size: inherit; font-weight: 600; }
+.msg .md h1, .msg .md h2 { font-size: 1.15em; }
+.msg .md p { margin: 6px 0; }
+.msg .md ul, .msg .md ol { margin: 6px 0; padding-left: 20px; }
+.msg .md li { margin: 2px 0; }
+.msg .md a { color: var(--blue); }
+.msg .md code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
+.msg .md :not(pre) > code { padding: 1px 5px; border-radius: 6px; background: rgba(255, 255, 255, .09); }
+.msg .md pre { margin: 6px 0; padding: 10px 12px; border-radius: 10px; background: rgba(0, 0, 0, .35); overflow-x: auto; font-size: 13px; line-height: 20px; }
+.msg .md pre code { background: none; padding: 0; }
+.msg .md blockquote { margin: 6px 0; padding-left: 10px; border-left: 2px solid var(--line-2); color: var(--text-2); }
+.msg .md .math { font-family: Georgia, "Times New Roman", serif; font-style: italic; }
+.msg .md .math.display { display: block; font-style: normal; }
+.msg .md .katex-display { margin: 6px 0; overflow-x: auto; overflow-y: hidden; }
+/* KaTeX: .katex-mathml itu position:absolute (1px, ter-clip) dan .katex
+   sendiri static, jadi containing block-nya jatuh ke .dsb-main dan kotaknya
+   memperluas scroll halaman. Jadikan tiap rumus containing block-nya. */
+.msg .katex { position: relative; }
+.typing { display: inline-flex; gap: 4px; padding: 4px 2px; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.typing-msg { display: flex; gap: 10px; align-items: flex-start; }
+.typing-msg .avatar, .typing-msg .bt-mark { width: 30px; height: 30px; flex-shrink: 0; }
+.typing-msg .typing-body { min-width: 0; }
+.typing-msg .typing-name { font-size: 12.5px; font-weight: 700; color: var(--text-2); margin-bottom: 2px; }
+.typing-msg .typing-text { font-size: 12.5px; color: var(--text-2); margin-left: 6px; }
+
+/* Composer (DS-Bot rounded + tombol kirim bulat) */
+.dsb-composer-root { display: flex; flex-direction: column; align-items: center; padding: 0 11px 13px 16px; }
+.dsb-composer-wrap { width: 100%; max-width: min(992px, 100%); }
+#composer {
+  display: flex; align-items: flex-end; gap: 6px;
+  padding: 8px 8px 8px 12px; border: 1px solid var(--line-2); border-radius: 18px;
+  background: var(--card); box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
+}
+#composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 124, 247, .25); }
+#composer .attach { cursor: pointer; font-size: 19px; padding: 4px 6px; line-height: 1; border-radius: 8px; color: var(--text-2); flex: none; align-self: flex-end; }
+#composer .attach:hover { background: var(--hover); color: var(--text); }
+#composer .composer-input { display: flex; flex: 1 1 0; min-width: 0; padding: 0 4px; }
+#composer input[type="text"] {
+  flex: 1; width: 100%; border: 0; outline: 0; resize: none; background: none;
+  color: var(--text); font-size: 14px; line-height: 24px; padding: 2px 0;
+}
+#composer input[type="text"]::placeholder { color: var(--text-3); }
+#composer button[type="submit"] {
+  flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%;
+  display: inline-grid; place-items: center; background: var(--accent); color: var(--accent-ink);
+  cursor: pointer; font-size: 15px; line-height: 1; transition: opacity .15s ease;
+  align-self: flex-end; margin-bottom: 1px;
+}
+#composer button[type="submit"]:hover { opacity: .9; }
+#composer button[type="submit"]:disabled { display: none; }
+#status { margin: 6px 0 0; padding: 0 4px; font-size: 12px; color: var(--text-3); min-height: 16px; }
+#image-preview { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); max-width: 220px; overflow: hidden; flex-shrink: 0; align-self: flex-end; padding-bottom: 4px; }
+#image-preview img { max-height: 40px; border-radius: 8px; }
+#image-preview button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 15px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line-2);
+  background: var(--card); color: var(--text); font-weight: 600; font-size: 13px;
+  cursor: pointer;
+}
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-dark); }
+.btn.danger { color: var(--red); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* ---------- Settings sheet (bot details) ---------- */
+#bot-settings { padding: 76px 20px 18px; border-bottom: 1px solid var(--line); background: var(--card); }
+#bot-settings[hidden] { display: none; }
+#bot-settings h3 { margin: 0 0 12px; font-size: 15px; }
+#bot-settings .sheet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#bot-settings .field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--text-2); }
+#bot-settings .field.full { grid-column: 1 / -1; }
+#bot-settings input[type="text"], #bot-settings select {
+  padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line-2);
+  background: var(--bg); color: var(--text); font-size: 14px;
+}
+#bot-settings input[type="text"]:focus, #bot-settings select:focus { outline: none; border-color: var(--accent); }
+#bot-settings input[type="color"] { width: 52px; height: 36px; padding: 2px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); cursor: pointer; }
+/* ---------- Picker avatar ala DS-Bot Settings (Phase 8) ----------
+   Preview besar + tab Bot/Upload + grid karakter 6 kolom + baris warna. */
+.set-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.set-preview { width: 96px; height: 96px; flex-shrink: 0; }
+.set-preview .bt-mark, .set-preview .avatar-img { width: 96px; height: 96px; }
+.set-preview .bt-mark { filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .45)); }
+.set-who { min-width: 0; }
+.set-name { font-size: 18px; font-weight: 700; }
+.set-role { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+.bt-tabs { display: flex; gap: 4px; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.bt-tab {
+  padding: 7px 16px; border-radius: 999px; border: 0; background: none;
+  color: var(--text-2); font-size: 13.5px; font-weight: 700; cursor: pointer;
+}
+.bt-tab:hover { background: var(--hover); color: var(--text); }
+.bt-tab.active { background: var(--active); color: var(--text); }
+.bt-tab-link {
+  margin-left: auto; padding: 7px 10px; border: 0; background: none;
+  color: var(--text-3); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.bt-tab-link:hover { color: var(--text); text-decoration: underline; }
+.set-tab { margin-bottom: 4px; }
+.bt-shapes { display: grid; grid-template-columns: repeat(6, 40px); gap: 8px; }
+.bt-shape {
+  position: relative; width: 40px; height: 40px; padding: 0; border: 0;
+  background: none; cursor: pointer; color: var(--text-3);
+}
+.bt-shape:hover { color: var(--text); }
+.bt-shape .bt-mark { width: 36px; height: 36px; position: absolute; inset: 2px; }
+.bt-shape .bt-ring {
+  position: absolute; inset: -3px; width: 46px; height: 46px;
+  color: var(--accent); opacity: 0; pointer-events: none;
+}
+.bt-shape.selected .bt-ring { opacity: 1; }
+.bt-shape.selected { color: var(--accent); }
+.bt-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+.bt-color {
+  width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 0;
+  background: none; cursor: pointer; position: relative;
+}
+.bt-color span {
+  display: block; width: 26px; height: 26px; margin: 2px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+}
+.bt-color.selected span { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.color-custom { display: flex; align-items: center; gap: 10px; }
+.color-custom code { font-size: 12.5px; color: var(--text-3); }
+.form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+#set-status { margin: 8px 0 0; font-size: 12px; color: var(--text-2); min-height: 16px; }
+
+/* ---------- Pages (routines / usage) ---------- */
+.page { padding: 20px 20px 40px; max-width: 960px; margin: 0 auto; }
+.page h2 { margin: 4px 0 4px; font-size: 20px; }
+.page .lede { margin: 0 0 16px; color: var(--text-2); font-size: 13.5px; }
+.section { margin-bottom: 20px; }
+.section > h3 { margin: 0 0 10px; font-size: 16px; }
+
+/* Cards (usage) */
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+.card .label { font-size: 12px; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.card .big { font-size: 26px; font-weight: 800; margin-top: 4px; line-height: 1.15; }
+.card .small { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+.card.quota { grid-column: 1 / -1; }
+.quota-note { color: var(--text-2); font-size: 13.5px; margin: 6px 0 12px; }
+.quota-note b { color: var(--text); }
+.model-bar { margin-bottom: 12px; }
+.model-bar .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.model-bar .row b { font-weight: 700; }
+.model-bar .track { height: 8px; background: var(--surface-2); border-radius: 999px; margin-top: 5px; overflow: hidden; }
+.model-bar .fill { height: 100%; background: var(--accent); border-radius: 999px; min-width: 2px; }
+.model-bar .fill.alt { background: #7c8cff; }
+.model-bar .meta { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+/* Real Antigravity Pro quota groups (from agy /usage, Phase 5) */
+.quota-group { border: 1px solid var(--line-2); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px; background: var(--bg); }
+.quota-group > .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.quota-group > .row b { font-size: 15px; }
+.quota-group .model-bar:last-child { margin-bottom: 0; }
+.btn.small { padding: 6px 10px; font-size: 12.5px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.panel .pad { padding: 14px 16px; }
+.note { color: var(--text-2); font-size: 13px; }
+
+/* ---------- Tables ---------- */
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 10px 12px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
+th { background: var(--sidebar); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-2); }
+tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:hover td { background: var(--hover); }
+
+/* ---------- Pills & switches ---------- */
+.pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill-ok { background: var(--green-soft); color: var(--green); }
+.pill-warn { background: var(--amber-soft); color: var(--amber); }
+.pill-fail { background: var(--red-soft); color: var(--red); }
+.pill-muted { background: rgba(255, 255, 255, .07); color: var(--text-2); }
+.pill-info { background: var(--blue-soft); color: var(--blue); }
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute; inset: 0; cursor: pointer; border-radius: 999px;
+  background: rgba(255, 255, 255, .22); transition: .18s;
+}
+.switch .slider::before {
+  content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: .18s; box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(20px); }
+
+/* ---------- Routines page ---------- */
+.routine-card-list { display: flex; flex-direction: column; gap: 10px; }
+.routine-card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 13px 15px;
+  display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap;
+}
+.routine-card .info { flex: 1; min-width: 200px; }
+.routine-card .r-name { font-weight: 700; font-size: 14.5px; }
+.routine-card .r-meta { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+.routine-card .r-last { font-size: 12.5px; color: var(--text-2); margin-top: 4px; }
+.routine-card .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.routine-card .actions .btn { padding: 7px 12px; font-size: 12.5px; }
+#routine-form { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+#routine-form label { display: block; margin-bottom: 12px; font-size: 13.5px; color: var(--text-2); }
+#routine-form input[type="text"], #routine-form input[type="time"],
+#routine-form select, #routine-form textarea {
+  width: 100%; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line-2);
+  background: var(--bg); color: var(--text); font-size: 14px; margin-top: 5px;
+}
+#routine-form input:focus, #routine-form select:focus, #routine-form textarea:focus { outline: none; border-color: var(--accent); }
+#routine-form fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0 0 12px; padding: 8px 12px; }
+#routine-form fieldset legend { font-size: 13px; color: var(--text-2); padding: 0 6px; }
+#routine-form fieldset label { display: inline-block; margin: 4px 12px 4px 0; color: var(--text); }
+#routine-form .check-row { display: flex; align-items: center; gap: 8px; color: var(--text); }
+#form-status { font-size: 13px; color: var(--text-2); min-height: 18px; }
+
+/* Collapsed rail (DS-Bot data-rail): sidebar shrinks to a 56px icon rail.
+   DESKTOP ONLY — on mobile the rail must never appear (Phase 6 bug fix). */
+@media (min-width: 761px) {
+  .dsb-frame[data-rail] { grid-template-columns: 56px minmax(0, 1fr); }
+  .dsb-frame[data-rail] .dsb-side { padding: 0 10px 6px; }
+  .dsb-frame[data-rail] .dsb-side .list-label,
+  .dsb-frame[data-rail] .bot-item .who,
+  .dsb-frame[data-rail] .dsb-side-foot .who { display: none; }
+  .dsb-frame[data-rail] .dsb-side-top { justify-content: center; }
+  .dsb-frame[data-rail] .dsb-side-list { margin: 0; padding: 0; align-items: center; }
+  .dsb-frame[data-rail] .bot-item { width: 36px; height: 36px; padding: 0; margin: 0 0 6px; justify-content: center; }
+  .dsb-frame[data-rail] .dsb-side-foot { justify-content: center; padding: 8px 0 6px; }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .dsb-frame { grid-template-columns: 240px minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  /* Rail is FORBIDDEN on mobile: force single column even if data-rail
+     is somehow set, and hide the collapse button entirely. */
+  .dsb-frame, .dsb-frame[data-rail] { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  #collapse-btn { display: none; }
+  /* Sidebar becomes a top strip.
+     Bot picker MINIMALIS (Phase 7): deretan avatar bulat + nama kecil,
+     TANPA kartu, tanpa tagline, tanpa chip. Total tinggi strip ~64px
+     (dulu ~110px kartu bertumpuk) — chat yang mendominasi layar. */
+  .dsb-side { padding: 0 8px 4px; border-right: none; border-bottom: 1px solid var(--line); overflow: hidden; }
+  .dsb-side-top { display: none; }
+  .dsb-side-list { margin: 0; padding-left: 0; }
+  .bt-list {
+    display: flex; gap: 2px; overflow-x: auto; overflow-y: hidden;
+    justify-content: center; justify-content: safe center;
+    align-items: flex-start;
+    padding-bottom: 2px; scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+  .bt-list::-webkit-scrollbar { display: none; }
+  .bot-item {
+    flex: 0 0 auto; width: auto; min-width: 0; margin: 0; padding: 4px 4px;
+    border: 0; background: none; scroll-snap-align: start;
+    flex-direction: column; align-items: center; gap: 3px;
+  }
+  .bot-item.active { background: var(--accent-soft); }
+  .bot-item .avatar, .bot-item .avatar-img, .bot-item .bt-mark { width: 36px; height: 36px; }
+  .bot-item .who { width: 100%; text-align: center; }
+  .bot-item .name { font-size: 10.5px; font-weight: 600; text-align: center; display: block; }
+  .bot-item .name-row { justify-content: center; }
+  .bot-item .dot { display: none; }
+  .dsb-side-foot { display: none; }
+  .dsb-main { min-height: 0; }
+  .dsb-scroll { padding: 68px 10px 12px; }
+  .msg { max-width: 92%; font-size: 14px; }
+  .msg.assistant > .avatar, .msg.assistant > .avatar-img { width: 28px; height: 28px; }
+  .bt-pill { max-width: calc(100% - 16px); }
+  .page { padding: 16px 12px 32px; }
+  #bot-settings .sheet-grid { grid-template-columns: 1fr; }
+  table.responsive thead { display: none; }
+  table.responsive, table.responsive tbody, table.responsive tr, table.responsive td { display: block; width: 100%; }
+  table.responsive tr { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; background: var(--card); overflow: hidden; }
+  table.responsive td { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); padding: 9px 12px; }
+  table.responsive td:last-child { border-bottom: none; }
+  table.responsive td::before { content: attr(data-label); color: var(--text-2); font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  table.responsive td.num { text-align: right; }
+  .cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .card .big { font-size: 22px; }
+}
+@media (max-width: 760px) {
+  .topbar-brand b { display: none; }
+  .topbar-inner { gap: 10px; flex-wrap: nowrap; padding: 6px 8px; }
+  .topbar-nav a { padding: 6px 9px; font-size: 12.5px; }
+  .bt-shapes { grid-template-columns: repeat(6, 36px); gap: 6px; }
+  .bt-shape { width: 36px; height: 36px; }
+  .bt-shape .bt-mark { width: 32px; height: 32px; }
+  .bt-shape .bt-ring { width: 42px; height: 42px; }
+}
+@media (max-width: 420px) {
+  .topbar-nav a { padding: 6px 7px; font-size: 12px; }
+  .topbar-inner { gap: 8px; }
+}
+
+/* Tabel Markdown di balasan bot (perbaikan 29 Okt 03:52): tabel HTML
+   dengan scroll horizontal supaya kebaca di layar HP yang sempit. */
+.msg .md .table-wrap { margin: 8px 0; overflow-x: auto; }
+.msg .md table { border-collapse: collapse; width: 100%; min-width: 480px; font-size: .92em; }
+.msg .md th, .msg .md td { border: 1px solid var(--line-2); padding: 6px 10px; text-align: left; vertical-align: top; }
+.msg .md th { background: var(--surface-2); }

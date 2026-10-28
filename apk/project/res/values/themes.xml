@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Very dark theme, matching the AgyBot web UI (#1a1a1a). The
+         windowBackground is the splash drawable, shown while the app
+         starts; the WebView covers it once loaded. -->
+    <style name="Theme.AgyBot" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:colorBackground">@color/agybot_dark</item>
+        <item name="android:colorPrimary">@color/accent</item>
+        <item name="android:colorPrimaryDark">@color/agybot_dark</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:statusBarColor">@color/agybot_dark</item>
+        <item name="android:navigationBarColor">@color/agybot_dark</item>
+        <item name="android:textColor">#eaf1f8</item>
+    </style>
+</resources>

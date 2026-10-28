@@ -1,0 +1,32 @@
+# Data runtime + secrets — JANGAN PERNAH di-commit
+server/data/
+data/
+*.db
+*.sqlite3
+
+# Kredensial
+secrets.json
+firebase-service-account.json
+credentials.json
+*.keystore
+*.jks
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# APK build
+apk/project/out/
+*.apk
+*.idsig
+*.apks
+
+# Runtime lain
+*.log
+server/work/
+work/
+server/static/katex/

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash: dark AgyBot background with the logo centred. Used as the
+     activity theme's windowBackground, so it shows while the app starts. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item
+        android:drawable="@drawable/splash_logo"
+        android:gravity="center"
+        android:width="192dp"
+        android:height="192dp" />
+</layer-list>
