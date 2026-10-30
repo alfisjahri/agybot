@@ -5,7 +5,7 @@ sebagai pengganti OpenBot yang relay cloud-nya rusak. Terdiri dari server
 web (Flask) dengan bot + routine terjadwal + integrasi Google, dan aplikasi
 Android pendamping untuk notifikasi routine.
 
-> Repo ini privat. `agy` CLI **bukan** bagian dari repo — itu dependency
+> Repo ini publik. `agy` CLI **bukan** bagian dari repo — itu dependency
 > eksternal yang di-install terpisah di server. Repo ini berisi kode AgyBot
 > yang **memanggil** `agy` (`agy -p --model ... --output-format json`).
 
