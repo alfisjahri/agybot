@@ -106,7 +106,7 @@ function renderMarkdown(text) {
     const h3 = line.match(/^###\s+(.*)$/);
     const h2 = line.match(/^##\s+(.*)$/);
     const ul = line.match(/^[-*•]\s+(.*)$/);
-    const ol = line.match(/^\d+[.)]\s+(.*)$/);
+    const ol = line.match(/^(\d+)[.)]\s+(.*)$/);
     // Blok tabel: baris header + baris pemisah, lalu baris-baris isi.
     if (tableRow(line) && i + 1 < lines.length && isSep(lines[i + 1])) {
       closeList();
@@ -132,8 +132,12 @@ function renderMarkdown(text) {
       html += h3 ? `<h3>${mdInline(h3[1])}</h3>` : `<h2>${mdInline(h2[1])}</h2>`;
     } else if (ul || ol) {
       const tag = ul ? "ul" : "ol";
-      if (inList !== tag) { closeList(); html += "<" + tag + ">"; inList = tag; }
-      html += `<li>${mdInline((ul || ol)[1])}</li>`;
+      if (inList !== tag) { closeList(); html += tag === "ol" ? '<ol style="list-style:none">' : "<ul>"; inList = tag; }
+      if (ol) {
+        html += `<li><span style="display:inline-block;min-width:1.6em">${ol[1]}.</span> ${mdInline(ol[2])}</li>`;
+      } else {
+        html += `<li>${mdInline(ul[1])}</li>`;
+      }
     } else if (line === "") {
       closeList();
     } else {
@@ -167,6 +171,7 @@ function renderMath(container) {
    layar. Tagline tetap ada di pill header (via settings) & settings. ---- */
 function renderBotList() {
   const el = document.getElementById("bot-list");
+  if (!el) return;
   el.querySelectorAll(".bot-item").forEach(n => n.remove());
   bots.forEach(b => {
     const d = document.createElement("button");
@@ -191,9 +196,10 @@ function renderBotHeader() {
     `<button type="button" class="bt-pill" id="pill-btn" title="Lihat detail bot">` +
     `${avatarHtml(currentBot, 26)}` +
     `<span class="bt-pill-name">${esc(currentBot.name)}</span>` +
-    `<span class="chip">${esc(shortModel(currentBot.model))} · ${esc(currentBot.effort)}</span>` +
     `<span class="bt-pill-go" aria-hidden="true">→</span>` +
-    `</button>`;
+    `</button>` +
+    `<button type="button" class="btn" id="picker-back" title="Kembali ke daftar bot">Pilih bot lain</button>`;
+  document.getElementById("picker-back").onclick = showPicker;
   document.getElementById("pill-btn").onclick = () => {
     const panel = document.getElementById("bot-settings");
     if (panel.hidden) openSettings();
@@ -448,8 +454,144 @@ function showTyping() {
   return d;
 }
 
+function showPicker() {
+  currentBot = null;
+  document.getElementById("frame").classList.add("picker-mode");
+  document.getElementById("bot-picker").hidden = false;
+  document.getElementById("chat").hidden = true;
+  document.querySelector(".dsb-head").hidden = true;
+  document.getElementById("bot-settings").hidden = true;
+  renderBotList();
+  renderPicker();
+}
+
+function renderPicker() {
+  const list = document.getElementById("picker-list");
+  const count = document.getElementById("picker-count");
+  if (count) count.textContent = bots.length + " / 20 bot";
+  const addModel = document.getElementById("add-model");
+  if (addModel && models.length) {
+    addModel.innerHTML = models.map(m => `<option>${m}</option>`).join("");
+    if (models.includes("gemini-3.8-flash")) addModel.value = "gemini-3.8-flash";
+  }
+  const addEffort = document.getElementById("add-effort");
+  if (addEffort && efforts.length) {
+    addEffort.innerHTML = efforts.map(e => `<option>${e}</option>`).join("");
+    if (efforts.includes("medium")) addEffort.value = "medium";
+  }
+  list.innerHTML = "";
+  bots.forEach(b => {
+    const card = document.createElement("div");
+    card.className = "picker-card";
+    card.dataset.name = (b.name || "").toLowerCase();
+    card.innerHTML = `${avatarHtml(b, 48)}
+      <div class="who"><div class="name">${esc(b.name)}</div>${b.tagline ? `<div class="sub">${esc(b.tagline)}</div>` : ""}</div>`;
+    card.addEventListener("click", () => selectBot(b.id));
+    list.appendChild(card);
+  });
+  const addCard = document.createElement("div");
+  addCard.className = "picker-card picker-add-card";
+  addCard.innerHTML = `<div class="picker-plus">+</div><div class="who"><div class="name">Tambah</div></div>`;
+  addCard.addEventListener("click", () => {
+    const wrap = document.getElementById("picker-add-wrap");
+    wrap.hidden = !wrap.hidden;
+    if (!wrap.hidden) document.getElementById("add-name").focus();
+  });
+  list.appendChild(addCard);
+}
+
+function showBotTab(which) {
+  const chatTab = document.getElementById("tab-chat-view");
+  const routTab = document.getElementById("tab-routines-view");
+  const scroll = document.querySelector(".dsb-scroll");
+  const composer = document.querySelector(".dsb-composer-root");
+  const rout = document.getElementById("bot-routines");
+  const isRout = which === "routines";
+  chatTab.classList.toggle("active", !isRout);
+  routTab.classList.toggle("active", isRout);
+  scroll.hidden = isRout;
+  composer.hidden = isRout;
+  rout.hidden = !isRout;
+  if (isRout) loadBotRoutines();
+}
+
+async function loadBotRoutines() {
+  const wrap = document.getElementById("bot-routine-list");
+  if (!currentBot) { wrap.innerHTML = ""; return; }
+  wrap.innerHTML = `<p class="note">Memuat routines…</p>`;
+  try {
+    const all = await api("/api/routines");
+    const mine = all.filter(r => r.bot_id === currentBot.id);
+    if (!mine.length) {
+      wrap.innerHTML = `<p class="note">Bot ini belum punya routine.</p>`;
+      return;
+    }
+    wrap.innerHTML = "";
+    mine.forEach(r => {
+      const last = r.last_run
+        ? `${esc(r.last_run.status)} · ${new Date((r.last_run.finished_at || r.last_run.started_at) * 1000).toLocaleString("id-ID")}`
+        : "belum pernah jalan";
+      const card = document.createElement("div");
+      card.className = "routine-card";
+      card.innerHTML =
+        `<div class="info">
+          <div class="r-name">${esc(r.name)}</div>
+          <div class="r-meta">${esc(r.schedule_label)}</div>
+          <div class="r-last">Run terakhir: ${last}</div>
+        </div>
+        <div class="actions">
+          <label class="switch" title="${r.enabled ? "Nonaktifkan" : "Aktifkan"}">
+            <input type="checkbox" data-act="toggle" ${r.enabled ? "checked" : ""}>
+            <span class="slider"></span>
+          </label>
+          <button class="btn primary" data-act="run">Jalankan</button>
+        </div>`;
+      card.querySelector('[data-act="toggle"]').addEventListener("change", async (e) => {
+        try {
+          await api("/api/routines/" + r.id, { method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: e.target.checked }) });
+        } catch (err) { alert("Gagal: " + err.message); e.target.checked = !e.target.checked; }
+      });
+      card.querySelector('[data-act="run"]').addEventListener("click", async (ev) => {
+        const btn = ev.currentTarget;
+        btn.disabled = true;
+        try {
+          const res = await api("/api/routines/" + r.id + "/run", { method: "POST" });
+          btn.textContent = "Berjalan…";
+          for (let i = 0; i < 40; i++) {
+            await new Promise(res2 => setTimeout(res2, 15000));
+            const run = await api("/api/routine-runs/" + res.run_id);
+            if (run.status !== "running") break;
+          }
+          loadBotRoutines();
+        } catch (err) { alert("Gagal menjalankan: " + err.message); btn.disabled = false; }
+      });
+      wrap.appendChild(card);
+    });
+  } catch (err) {
+    wrap.innerHTML = `<p class="note">Gagal memuat routines: ${esc(err.message)}</p>`;
+  }
+}
+
+async function deleteCurrentBot() {
+  if (!currentBot) return;
+  if (!confirm("Hapus bot '" + currentBot.name + "'?")) return;
+  try {
+    await api("/api/bots/" + currentBot.id, { method: "DELETE" });
+    bots = await api("/api/bots");
+    renderBotList(); showPicker();
+  } catch (err) { alert("Gagal menghapus: " + err.message); }
+}
+
 async function selectBot(id) {
   currentBot = bots.find(b => b.id === id);
+  document.getElementById("frame").classList.remove("picker-mode");
+  document.getElementById("picker-add-wrap").hidden = true;
+  showBotTab("chat");
+  document.getElementById("bot-picker").hidden = true;
+  document.getElementById("chat").hidden = false;
+  document.querySelector(".dsb-head").hidden = false;
   document.getElementById("bot-settings").hidden = true;
   renderBotList();
   renderBotHeader();
@@ -504,9 +646,11 @@ function addUserMsgWithImage(objectUrl, text) {
 async function send(e) {
   e.preventDefault();
   if (!currentBot) return;
+  if (window.__chatPending) return;
   const input = document.getElementById("input");
   const text = input.value.trim();
   if (!text && !pendingImage) return;
+  window.__chatPending = true;
   input.value = "";
   updateSendBtn();
   const file = pendingImage;
@@ -523,34 +667,86 @@ async function send(e) {
   btn.disabled = true;
   const typing = showTyping();
   setBotTyping(true);
-  status.textContent = currentBot.name + " mikir… (agy -p, bisa ~10 detik sampai beberapa menit)";
+  const t0 = Date.now();
+  const tick = () => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    status.textContent = currentBot.name + " mikir… " + s + " detik";
+  };
+  tick();
+  const timer = setInterval(tick, 1000);
+  const finish = () => {
+    clearInterval(timer);
+    typing.remove();
+    setBotTyping(false);
+    btn.disabled = false;
+    window.__chatPending = false;
+    updateSendBtn();
+  };
   try {
-    let r;
+    let jobId = null;
+    let was409 = false;
+    const fd2 = new FormData();
     if (file) {
-      const fd = new FormData();
-      fd.append("bot_id", String(currentBot.id));
-      fd.append("message", text || "Jelaskan gambar ini.");
-      fd.append("image", file);
-      const res = await fetch("/api/chat", { method: "POST", body: fd });
-      r = await res.json();
-      if (!res.ok) throw new Error(r.error || ("HTTP " + res.status));
-    } else {
-      r = await api("/api/chat", { method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bot_id: currentBot.id, message: text }) });
+      fd2.append("bot_id", String(currentBot.id));
+      fd2.append("message", text || "Jelaskan gambar ini.");
+      fd2.append("image", file);
     }
-    typing.remove();
-    setBotTyping(false);
-    addMsg("assistant", r.reply, r.usage);
-    status.textContent = r.ok ? `selesai ${r.duration_seconds || "?"} detik` : "agy gagal";
+    const res = file
+      ? await fetch("/api/chat", { method: "POST", body: fd2 })
+      : await fetch("/api/chat", { method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bot_id: currentBot.id, message: text }) });
+    const r = await res.json().catch(() => ({}));
+    if (res.status === 409 && r.job_id) {
+      jobId = r.job_id;
+      was409 = true;
+    } else if (!res.ok) {
+      throw new Error(r.error || ("HTTP " + res.status));
+    } else {
+      jobId = r.job_id;
+    }
+    if (!jobId) throw new Error("server tidak mengembalikan job_id");
+    if (was409) {
+      addMsg("assistant", "Bot masih menjawab pesan sebelumnya, jadi pesan barusan belum dikirim. Ini balasan untuk pesan sebelumnya:");
+    }
+    let fails = 0;
+    for (;;) {
+      if (Date.now() - t0 > 900000) {
+        finish();
+        addMsg("assistant", "Bot belum selesai setelah 15 menit, kemungkinan server restart. Buka ulang chat untuk melihat balasan.");
+        status.textContent = "timeout poll";
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      let j;
+      try {
+        const pr = await fetch("/api/chat/jobs/" + jobId);
+        j = await pr.json().catch(() => ({}));
+        if (!pr.ok) throw new Error(j.error || ("HTTP " + pr.status));
+        fails = 0;
+      } catch (pollErr) {
+        fails += 1;
+        if (fails >= 5) throw pollErr;
+        continue;
+      }
+      if (j.status === "done") {
+        finish();
+        addMsg("assistant", j.reply, j.usage);
+        status.textContent = j.ok ? `selesai ${j.duration_seconds || "?"} detik` : "agy gagal";
+        return;
+      }
+      if (j.status === "failed") {
+        finish();
+        addMsg("assistant", j.reply || ("Maaf, agy gagal: " + (j.error || "unknown error")));
+        status.textContent = "agy gagal";
+        return;
+      }
+    }
   } catch (err) {
-    typing.remove();
-    setBotTyping(false);
+    finish();
     addMsg("assistant", "Gagal menghubungi server: " + err.message);
     status.textContent = "error";
   }
-  btn.disabled = false;
-  updateSendBtn();
 }
 
 /* Rail sidebar (data-rail) hanya untuk desktop. Di HP rail pernah menumpuk
@@ -569,12 +765,38 @@ function guardRail() {
   bots = await api("/api/bots");
   const params = new URLSearchParams(window.location.search);
   const want = parseInt(params.get("bot") || "", 10);
-  const first = bots.find(b => b.id === want) || bots[0];
+  const first = bots.find(b => b.id === want);
   if (first) selectBot(first.id);
+  else showPicker();
   document.getElementById("composer").addEventListener("submit", send);
   document.getElementById("input").addEventListener("input", updateSendBtn);
   document.getElementById("image-input").addEventListener("change", updateImagePreview);
+  document.getElementById("tab-chat-view").addEventListener("click", () => showBotTab("chat"));
+  document.getElementById("tab-routines-view").addEventListener("click", () => showBotTab("routines"));
   document.getElementById("set-save").addEventListener("click", saveSettings);
+  document.getElementById("set-delete-bot").addEventListener("click", deleteCurrentBot);
+  document.getElementById("picker-add").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const status = document.getElementById("add-status");
+    try {
+      const nb = await api("/api/bots", { method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: document.getElementById("add-name").value.trim(),
+          role: document.getElementById("add-role").value.trim() || "Bot baru",
+          instructions: document.getElementById("add-instructions").value.trim(),
+          model: document.getElementById("add-model").value,
+          effort: document.getElementById("add-effort").value,
+        }) });
+      bots = await api("/api/bots");
+      renderBotList(); renderPicker();
+      document.getElementById("add-name").value = "";
+      document.getElementById("add-role").value = "";
+      document.getElementById("add-instructions").value = "";
+      status.textContent = "Bot '" + nb.name + "' ditambahkan.";
+      document.getElementById("picker-add-wrap").hidden = true;
+    } catch (err) { status.textContent = "Gagal: " + err.message; }
+  });
   document.getElementById("set-remove-photo").addEventListener("click", removePhoto);
   document.getElementById("set-close").addEventListener("click", () => {
     document.getElementById("bot-settings").hidden = true;
@@ -583,7 +805,8 @@ function guardRail() {
   document.getElementById("tab-upload").addEventListener("click", () => switchAvatarTab("upload"));
   document.getElementById("set-reset-look").addEventListener("click", resetLook);
   document.getElementById("set-color").addEventListener("change", (e) => saveLook({ avatar_color: e.target.value }));
-  document.getElementById("collapse-btn").addEventListener("click", () => {
+  const collapseBtn = document.getElementById("collapse-btn");
+  if (collapseBtn) collapseBtn.addEventListener("click", () => {
     if (window.innerWidth <= 760) return; // rail tidak ada di HP
     document.getElementById("frame").toggleAttribute("data-rail");
   });

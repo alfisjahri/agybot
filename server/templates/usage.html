@@ -3,8 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AgyBot — Usage &amp; Kuota</title>
-<link rel="stylesheet" href="/static/style.css?v=10">
+<title>AgyBot — Usage &amp; Quota</title>
+<link rel="stylesheet" href="/static/style.css?v=19">
+  <style>
+  /* Usage final (29 Okt, permintaan Alfi): kecil, Inggris, tabel muat layar.
+     Hanya ada di usage.html — tidak mengubah style.css global. */
+  .page { padding: 8px 10px 12px; }
+  .page h2 { font-size: 15px; margin: 0 0 6px; }
+  .cards { gap: 6px; margin-bottom: 8px; }
+  .card { padding: 8px 10px; }
+  .card .label { font-size: 10.5px; }
+  .card .big { font-size: 18px; }
+  .card .small { font-size: 11px; }
+  .section { margin-bottom: 10px; }
+  .section > h3 { font-size: 13px; margin: 0 0 4px; }
+  details.fold > summary { cursor: pointer; font-size: 13px; font-weight: 700; padding: 4px 0; }
+  .quota-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 6px; }
+  .quota-head h3 { margin: 0; font-size: 13px; }
+  .quota-head .small { font-size: 10.5px; }
+  .quota-group { padding: 6px 8px; margin-bottom: 6px; }
+  .quota-group > .row { margin-bottom: 4px; }
+  .quota-group > .row b { font-size: 13px; }
+  .model-bar { margin-bottom: 6px; }
+  .model-bar .row { font-size: 12px; }
+  .model-bar .track { height: 5px; margin-top: 3px; }
+  .model-bar .meta { font-size: 10.5px; }
+  th, td { padding: 5px 8px; font-size: 12px; }
+  @media (max-width: 760px) {
+    .page { padding: 6px 8px 10px; }
+    /* Tabel muat lebar layar (tanpa scroll horizontal) supaya header tidak kepotong.
+       Kolom Avg (detik) disembunyikan di HP saja; di layar lebar tetap tampil. */
+    table.responsive thead { display: table-header-group; }
+    table.responsive { display: table; width: 100%; }
+    table.responsive tbody { display: table-row-group; }
+    table.responsive tr { display: table-row; border: none; margin: 0; background: none; border-radius: 0; }
+    table.responsive th { display: table-cell; font-size: 11px; padding: 5px 4px; white-space: normal; }
+    table.responsive td { display: table-cell; padding: 5px 4px; font-size: 11px; border-bottom: 1px solid var(--line); }
+    table.responsive td::before { content: none; }
+    table.responsive td.num { text-align: right; white-space: nowrap; }
+    table.responsive th.avg, table.responsive td.avg { display: none; }
+  }
+  </style>
 </head>
 <body>
 <!-- Topbar (Phase 8): brand + nav Chat/Routines/Usage & Kuota, semua di-center.
@@ -13,120 +52,88 @@
   <div class="topbar-inner">
     <a class="topbar-brand" href="/"><img src="/logo.svg" alt="AgyBot"><b>AgyBot</b></a>
     <nav class="topbar-nav" aria-label="Halaman">
-      <a href="/"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span> Chat</a>
-      <a href="/routines"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> Routines</a>
-      <a href="/usage" class="active"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Usage &amp; Kuota</a>
+      <a href="/usage" class="active"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Usage &amp; Quota</a>
     </nav>
   </div>
 </header>
 <div class="dsb-frame" id="frame">
-  <aside class="dsb-side">
-    <div class="dsb-side-top">
-      <button class="bt-round" id="collapse-btn" type="button" title="Ciutkan sidebar" aria-label="Ciutkan sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
-    </div>
-    <div class="dsb-side-list">
-      <div class="bt-list" id="bot-list"></div>
-    </div>
-    <div class="dsb-side-foot">
-      <img src="/logo.svg" alt="" class="avatar" style="width:34px;height:34px;border-radius:50%">
-      <div class="who">
-        <div class="name">Alfi</div>
-        <div class="sub">Antigravity Pro · agy CLI</div>
-      </div>
-    </div>
-  </aside>
   <main class="dsb-main">
     <div class="dsb-main-scroll">
       <div class="page">
-        <h2>Usage &amp; Kuota</h2>
-        <p class="lede">Semua pemakaian token AgyBot dalam satu tempat — total, per bot, per routine,
-        per model, dan posisi kuota Antigravity Pro.</p>
+        <h2>Usage &amp; Quota</h2>
 
         <div class="cards">
           <div class="card">
-            <div class="label">Total token</div>
+            <div class="label">Total tokens</div>
             <div class="big">{{ "{:,}".format(summary.total.total_tokens) }}</div>
-            <div class="small">sepanjang waktu · {{ summary.total.calls }} call</div>
+            <div class="small">all time · {{ summary.total.calls }} call{{ 's' if summary.total.calls != 1 }}</div>
           </div>
           <div class="card">
-            <div class="label">Hari ini</div>
+            <div class="label">Today</div>
             <div class="big">{{ "{:,}".format(summary.today.total_tokens) }}</div>
-            <div class="small">{{ summary.today.calls }} call hari ini</div>
+            <div class="small">{{ summary.today.calls }} call{{ 's' if summary.today.calls != 1 }} today</div>
           </div>
           <div class="card">
-            <div class="label">Rata-rata / call</div>
+            <div class="label">Average / call</div>
             <div class="big">{{ "{:,}".format((summary.total.total_tokens // summary.total.calls) if summary.total.calls else 0) }}</div>
-            <div class="small">token per call (input + output)</div>
           </div>
           <div class="card">
-            <div class="label">Bot teraktif</div>
-            <div class="big" style="font-size:19px">{% set top = summary.per_bot | sort(attribute='total_tokens', reverse=True) | first %}{{ top.name if top and top.total_tokens else "—" }}</div>
-            <div class="small">{% if top and top.total_tokens %}{{ "{:,}".format(top.total_tokens) }} token · {{ top.calls }} call{% else %}belum ada call{% endif %}</div>
+            <div class="label">Most active bot</div>
+            <div class="big" style="font-size:16px">{% set top = summary.per_bot | sort(attribute='total_tokens', reverse=True) | first %}{{ top.name if top and top.total_tokens else "—" }}</div>
+            <div class="small">{% if top and top.total_tokens %}{{ "{:,}".format(top.total_tokens) }} tokens · {{ top.calls }} call{{ 's' if top.calls != 1 }}{% else %}no calls yet{% endif %}</div>
           </div>
         </div>
 
         <div class="section">
           <div class="card quota">
-            <h3 style="margin:0 0 2px">Kuota Antigravity Pro — asli dari agy</h3>
+          <div class="quota-head">
+            <h3>Antigravity Pro quota</h3>
+            <button type="button" class="btn small" id="quota-refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Refresh quota</button>
+            <span class="small">{% if quota %}Updated {{ quota.fetched_at_human }}{% endif %}</span>
+            <span class="small" id="quota-status"></span>
+          </div>
             {% if quota %}
-            <p class="quota-note">Diambil langsung dari <code>agy /usage</code> (mode interaktif),
-            akun <b>{{ quota.account }}</b> · diperbarui
-            <b>{{ quota.fetched_at_human }}</b> · auto-refresh tiap 30 menit.
-            Angka ini adalah <b>sisa kuota</b> (bukan pemakaian): makin kecil
-            angkanya, makin dekat ke batas. Angka bisa turun saat akun yang sama dipakai di luar AgyBot.
-            <button type="button" class="btn small" id="quota-refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Perbarui kuota</button>
-            <span class="small" id="quota-status"></span></p>
             {% for g in quota.groups %}
             <div class="quota-group">
-              <div class="row"><b>{{ g.name }}</b><span class="small">{{ g.subtitle }}</span></div>
+              <div class="row"><b>{{ g.name }}</b></div>
               <div class="model-bar">
-                <div class="row"><span>Limit mingguan tersisa</span><b>{{ g.weekly.remaining_pct }}%</b></div>
+                <div class="row"><span>Weekly limit remaining</span><b>{{ g.weekly.remaining_pct }}%</b></div>
                 <div class="track"><div class="fill" style="width: {{ g.weekly.remaining_pct }}%"></div></div>
-                <div class="meta">{% if g.weekly.refresh == "Quota available" %}Kuota tersedia{% else %}Reset dalam {{ g.weekly.refresh }}{% endif %}</div>
+                <div class="meta">{% if g.weekly.refresh == "Quota available" %}Quota available{% else %}Resets in {{ g.weekly.refresh }}{% endif %}</div>
               </div>
               {% if g.five_hour %}
               <div class="model-bar">
-                <div class="row"><span>Limit 5 jam tersisa</span><b>{{ g.five_hour.remaining_pct }}%</b></div>
+                <div class="row"><span>5-hour limit remaining</span><b>{{ g.five_hour.remaining_pct }}%</b></div>
                 <div class="track"><div class="fill alt" style="width: {{ g.five_hour.remaining_pct }}%"></div></div>
-                <div class="meta">{% if g.five_hour.refresh == "Quota available" %}Kuota tersedia{% else %}Reset dalam {{ g.five_hour.refresh }}{% endif %}</div>
+                <div class="meta">{% if g.five_hour.refresh == "Quota available" %}Quota available{% else %}Resets in {{ g.five_hour.refresh }}{% endif %}</div>
               </div>
               {% endif %}
             </div>
             {% endfor %}
-            {% if quota.note %}
-            <p class="quota-note small">{{ quota.note }}</p>
-            {% endif %}
             {% else %}
-            <p class="quota-note">Kuota Pro <b>belum berhasil dibaca</b> — pengambilan pertama
-            sedang berjalan di latar belakang (butuh ~30–60 detik, lewat
-            <code>agy /usage</code> interaktif) atau gagal.
-            Refresh halaman ini sebentar lagi.
-            <button type="button" class="btn small" id="quota-refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Coba ambil kuota</button>
-            <span class="small" id="quota-status"></span></p>
+            <p class="quota-note">Pro quota <b>could not be read</b> — still fetching
+            in the background (~30–60 seconds) or failed.
+            Tap Refresh quota above, then refresh this page shortly.</p>
             {% endif %}
-            <h4 style="margin:14px 0 4px">Token yang dipakai AgyBot sendiri</h4>
-            <p class="quota-note">Yang di bawah ini adalah token yang dipakai <b>AgyBot</b>,
-            dihitung dari usage yang dilaporkan agy per call. Perhatikan:
-            tugas berat lewat agy memakai input token besar (context re-read
-            internal), jadi kuota bisa cepat berkurang walau output-nya kecil.</p>
+            <h4 style="margin:10px 0 4px;font-size:14px">Per model</h4>
             {% if summary.per_model %}
             {% for m in summary.per_model %}
             <div class="model-bar">
-              <div class="row"><b>{{ m.model }}</b><span>{{ "{:,}".format(m.total_tokens) }} token</span></div>
+              <div class="row"><b>{{ m.model }}</b><span>{{ "{:,}".format(m.total_tokens) }} tokens</span></div>
               <div class="track"><div class="fill{% if loop.index0 % 2 %} alt{% endif %}" style="width: {{ (m.total_tokens * 100 / summary.total.total_tokens) | round(1) if summary.total.total_tokens else 0 }}%"></div></div>
-              <div class="meta">{{ m.calls }} call · input {{ "{:,}".format(m.input_tokens) }} · output {{ "{:,}".format(m.output_tokens) }} · {{ (m.total_tokens * 100 / summary.total.total_tokens) | round(1) if summary.total.total_tokens else 0 }}% dari total</div>
+              <div class="meta">{{ m.calls }} call{{ 's' if m.calls != 1 }} · input {{ "{:,}".format(m.input_tokens) }} · output {{ "{:,}".format(m.output_tokens) }} · {{ (m.total_tokens * 100 / summary.total.total_tokens) | round(1) if summary.total.total_tokens else 0 }}% of total</div>
             </div>
             {% endfor %}
             {% else %}
-            <p class="note">Belum ada call.</p>
+            <p class="note">No calls yet.</p>
             {% endif %}
           </div>
         </div>
 
         <div class="section">
-          <h3>Per bot</h3>
+          <details class="fold"><summary>Per bot</summary>
           <div class="panel"><table class="responsive">
-            <thead><tr><th>Bot</th><th class="num">Call</th><th class="num">Input</th><th class="num">Output</th><th class="num">Total token</th><th class="num">Rata-rata (detik)</th></tr></thead>
+            <thead><tr><th>Bot</th><th class="num">Call</th><th class="num">Input</th><th class="num">Output</th><th class="num">Total tokens</th><th class="num avg">Average (sec)</th></tr></thead>
             <tbody>
             {% for b in summary.per_bot %}
             <tr>
@@ -134,19 +141,20 @@
               <td data-label="Call" class="num">{{ b.calls }}</td>
               <td data-label="Input" class="num">{{ "{:,}".format(b.input_tokens) }}</td>
               <td data-label="Output" class="num">{{ "{:,}".format(b.output_tokens) }}</td>
-              <td data-label="Total token" class="num">{{ "{:,}".format(b.total_tokens) }}</td>
-              <td data-label="Rata-rata (detik)" class="num">{{ b.avg_seconds }}</td>
+              <td data-label="Total tokens" class="num">{{ "{:,}".format(b.total_tokens) }}</td>
+              <td data-label="Average (sec)" class="num avg">{{ b.avg_seconds }}</td>
             </tr>
             {% endfor %}
             </tbody>
           </table></div>
+          </details>
         </div>
 
         <div class="section">
-          <h3>Per routine</h3>
+          <details class="fold"><summary>Per routine</summary>
           {% if summary.per_routine %}
           <div class="panel"><table class="responsive">
-            <thead><tr><th>Routine</th><th class="num">Call</th><th class="num">Input</th><th class="num">Output</th><th class="num">Total token</th></tr></thead>
+            <thead><tr><th>Routine</th><th class="num">Call</th><th class="num">Input</th><th class="num">Output</th><th class="num">Total tokens</th></tr></thead>
             <tbody>
             {% for r in summary.per_routine %}
             <tr>
@@ -154,32 +162,32 @@
               <td data-label="Call" class="num">{{ r.calls }}</td>
               <td data-label="Input" class="num">{{ "{:,}".format(r.input_tokens) }}</td>
               <td data-label="Output" class="num">{{ "{:,}".format(r.output_tokens) }}</td>
-              <td data-label="Total token" class="num">{{ "{:,}".format(r.total_tokens) }}</td>
+              <td data-label="Total tokens" class="num">{{ "{:,}".format(r.total_tokens) }}</td>
             </tr>
             {% endfor %}
             </tbody>
           </table></div>
           {% else %}
-          <p class="note">Belum ada routine yang pernah jalan.</p>
+          <p class="note">No routine has run yet.</p>
           {% endif %}
+          </details>
         </div>
 
         <div class="section">
-          <h3>Per hari</h3>
+          <details class="fold"><summary>Per day</summary>
           <div class="panel"><table class="responsive">
-            <thead><tr><th>Hari</th><th class="num">Call</th><th class="num">Total token</th></tr></thead>
+            <thead><tr><th>Day</th><th class="num">Call</th><th class="num">Total tokens</th></tr></thead>
             <tbody>
             {% for d in summary.per_day %}
             <tr>
-              <td data-label="Hari">{{ d.day }}</td>
+              <td data-label="Day">{{ d.day }}</td>
               <td data-label="Call" class="num">{{ d.calls }}</td>
-              <td data-label="Total token" class="num">{{ "{:,}".format(d.total_tokens) }}</td>
+              <td data-label="Total tokens" class="num">{{ "{:,}".format(d.total_tokens) }}</td>
             </tr>
             {% endfor %}
             </tbody>
           </table></div>
-          <p class="note">Token dihitung dari usage yang dilaporkan agy per call
-          (input + output). Hari memakai zona waktu WITA.</p>
+          </details>
         </div>
       </div>
     </div>
@@ -189,14 +197,14 @@
 <script>
 document.getElementById("quota-refresh").addEventListener("click", async () => {
   const st = document.getElementById("quota-status");
-  st.textContent = "Mengambil kuota dari agy (~30–60 detik)…";
+  st.textContent = "Fetching quota from agy (~30–60 seconds)…";
   try {
     const r = await fetch("/api/quota/refresh", { method: "POST" });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
-    st.textContent = "Pengambilan dimulai — refresh halaman ini ~1 menit lagi.";
+    st.textContent = "Fetch started — refresh this page in ~1 minute.";
   } catch (e) {
-    st.textContent = "Gagal memicu: " + e.message;
+    st.textContent = "Failed to trigger: " + e.message;
   }
 });
 </script>

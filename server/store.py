@@ -9,6 +9,7 @@ Phase 4 adds: bots.tagline (karakter bot, tampil di daftar chat + header),
 and "today" totals in usage_summary() (hari ini, zona WITA).
 """
 import sqlite3
+import json
 import time
 
 SCHEMA = """
@@ -71,6 +72,18 @@ CREATE TABLE IF NOT EXISTS routine_runs (
     verification TEXT,
     started_at INTEGER NOT NULL,
     finished_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS chat_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bot_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    reply TEXT NOT NULL DEFAULT '',
+    ok INTEGER,
+    error TEXT,
+    duration_seconds REAL,
+    usage_json TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
 );
 """
 
@@ -139,6 +152,40 @@ def update_bot(db_path, bot_id, fields):
     conn.commit()
     conn.close()
     return True
+
+
+def create_bot(db_path, fields):
+    now = int(time.time())
+    name = (fields.get("name") or "Bot baru").strip() or "Bot baru"
+    role = (fields.get("role") or "Bot baru").strip() or "Bot baru"
+    instructions = fields.get("instructions") or "Kamu bot baru AgyBot. Jawab ringkas dan to-the-point."
+    conn = connect(db_path)
+    cur = conn.execute(
+        "INSERT INTO bots (name, role, instructions, model, effort, avatar_template, avatar_color, avatar_shape, tagline, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (name, role, instructions, fields.get("model") or "gemini-3.8-flash",
+         fields.get("effort") or "medium", int(fields.get("avatar_template") or 1),
+         fields.get("avatar_color") or "#2FA08C", fields.get("avatar_shape") or "",
+         fields.get("tagline") or "", now, now))
+    bot_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return get_bot(db_path, bot_id)
+
+
+def delete_bot(db_path, bot_id):
+    """Return (True, 0) if deleted, (False, n_routines) if blocked by routines."""
+    conn = connect(db_path)
+    n = conn.execute("SELECT COUNT(*) FROM routines WHERE bot_id = ?", (bot_id,)).fetchone()[0]
+    conn.close()
+    if n:
+        return False, n
+    conn = connect(db_path)
+    conn.execute("DELETE FROM messages WHERE bot_id = ?", (bot_id,))
+    conn.execute("DELETE FROM chat_jobs WHERE bot_id = ?", (bot_id,))
+    conn.execute("DELETE FROM bots WHERE id = ?", (bot_id,))
+    conn.commit()
+    conn.close()
+    return True, 0
 
 
 def add_message(db_path, bot_id, role, content):
@@ -228,3 +275,64 @@ def usage_summary(db_path):
         "total": dict(total),
         "today": dict(today),
     }
+
+
+def create_chat_job(db_path, bot_id):
+    conn = connect(db_path)
+    cur = conn.execute(
+        "INSERT INTO chat_jobs (bot_id, status, created_at, updated_at)"
+        " VALUES (?,?,?,?)",
+        (bot_id, "pending", int(time.time()), int(time.time())),
+    )
+    job_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return job_id
+
+
+def get_chat_job(db_path, job_id):
+    conn = connect(db_path)
+    row = conn.execute("SELECT * FROM chat_jobs WHERE id = ?",
+                       (job_id,)).fetchone()
+    conn.close()
+    if not row:
+        return None
+    job = dict(row)
+    try:
+        job["usage"] = json.loads(job.pop("usage_json")) if job.get("usage_json") else None
+    except Exception:
+        job["usage"] = None
+    return job
+
+
+def pending_chat_job(db_path, bot_id):
+    conn = connect(db_path)
+    row = conn.execute(
+        "SELECT * FROM chat_jobs WHERE bot_id = ? AND status = 'pending'"
+        " ORDER BY id DESC LIMIT 1",
+        (bot_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_chat_job(db_path, job_id, status, reply=None, ok=None,
+                    error=None, duration_seconds=None, usage=None):
+    sets = {"status": status, "updated_at": int(time.time())}
+    if reply is not None:
+        sets["reply"] = reply
+    if ok is not None:
+        sets["ok"] = 1 if ok else 0
+    if error is not None:
+        sets["error"] = error
+    if duration_seconds is not None:
+        sets["duration_seconds"] = float(duration_seconds)
+    if usage is not None:
+        sets["usage_json"] = json.dumps(usage)
+    conn = connect(db_path)
+    conn.execute(
+        "UPDATE chat_jobs SET %s WHERE id = ?"
+        % ", ".join("%s = ?" % k for k in sets),
+        list(sets.values()) + [job_id],
+    )
+    conn.commit()
+    conn.close()

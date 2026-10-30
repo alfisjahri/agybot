@@ -43,10 +43,10 @@ def _count_real(responses_data):
 
 
 _CLAIMED_SUBMIT_RE = re.compile(
-    r"(\d+)\s*(siswa\s+)?(sudah\s+)?(submit|mengumpulkan|mengirim|"
+    r"\*{0,2}(\d+)\*{0,2}\s*(siswa\s+)?(sudah\s+)?(submit|mengumpulkan|mengirim|"
     r"mengerjakan|respons|respon|menjawab)", re.IGNORECASE)
 _CLAIMED_MISSING_RE = re.compile(
-    r"(\d+)\s*(siswa\s+)?belum(\s+mengerjakan|\s+mengumpulkan|\s+submit)?",
+    r"\*{0,2}(\d+)\*{0,2}\s*(siswa\s+)?belum(\s+mengerjakan|\s+mengumpulkan|\s+submit)?",
     re.IGNORECASE)
 
 
@@ -149,10 +149,10 @@ def _check_cek(db_path, routine, reply, form_id):
     return check
 
 
-_HADIR_RE = re.compile(r"hadir\s*(\d+)", re.IGNORECASE)
-_ALPA_RE = re.compile(r"alpa\s*(\d+)", re.IGNORECASE)
-_SAKIT_RE = re.compile(r"sakit\s*(\d+)", re.IGNORECASE)
-_IZIN_RE = re.compile(r"izin\s*(\d+)", re.IGNORECASE)
+_HADIR_RE = re.compile(r"hadir\s*\*{0,2}(\d+)", re.IGNORECASE)
+_ALPA_RE = re.compile(r"alpa\s*\*{0,2}(\d+)", re.IGNORECASE)
+_SAKIT_RE = re.compile(r"sakit\s*\*{0,2}(\d+)", re.IGNORECASE)
+_IZIN_RE = re.compile(r"izin\s*\*{0,2}(\d+)", re.IGNORECASE)
 
 
 def _check_rekap_absensi(reply):

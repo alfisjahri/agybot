@@ -26,6 +26,39 @@ from zoneinfo import ZoneInfo
 import store
 
 TZ = ZoneInfo("Asia/Makassar")
+
+# BUG HARI (diperbaiki 30 Okt 2026): APScheduler menghitung hari Senin=0 ..
+# Minggu=6, sedangkan cron standar menghitung Minggu=0, Senin=1 .. Sabtu=6.
+# Tanpa konversi ini semua routine bergeser +1 hari (routine Sel/Rab/Kam
+# jalan Rab/Kam/Jum, PTMT Kamis jalan Jumat, Rekap Jumat jalan Sabtu).
+# DB tetap menyimpan cron standar (mudah dibaca manusia); konversi hanya
+# dilakukan saat membuat trigger APScheduler di sync_scheduler().
+def _aps_dow_num(n):
+    return (int(n) - 1) % 7
+
+def _conv_dow_range(tok):
+    if "-" in tok:
+        a, b = tok.split("-", 1)
+        return "%d-%d" % (_aps_dow_num(a), _aps_dow_num(b))
+    return str(_aps_dow_num(tok))
+
+def cron_to_apscheduler(cron_expr):
+    parts = cron_expr.strip().split()
+    if len(parts) != 5:
+        return cron_expr
+    dow = parts[4]
+    out = []
+    for tok in dow.split(","):
+        if tok == "*":
+            out.append(tok)
+        elif "/" in tok:
+            b, s = tok.split("/", 1)
+            out.append((_conv_dow_range(b) + "/" + s) if b != "*" else tok)
+        else:
+            out.append(_conv_dow_range(tok))
+    parts[4] = ",".join(out)
+    return " ".join(parts)
+
 WITA = TZ
 
 ROUTINE_SCHEMA = """
@@ -350,6 +383,7 @@ def execute_run(db_path, run_id):
     os.makedirs(workdir, exist_ok=True)
     prompt = build_routine_prompt(bot, routine)
     result = agy_client.call_agy(prompt, bot["model"], bot["effort"], cwd=workdir)
+    is_skip = (result.get("response") or "").strip() == "SKIP_NO_CLASS"
     if not result["ok"]:
         _finish_run(db_path, run_id, "failed",
                     "agy gagal: %s" % result.get("error", "unknown error"),
@@ -364,11 +398,14 @@ def execute_run(db_path, run_id):
         store.record_usage(db_path, bot["id"], bot["model"], usage,
                            result.get("duration_seconds", 0),
                            routine_id=routine["id"])
-        store.add_message(db_path, bot["id"], "assistant",
-                          "[Routine: %s]\n%s" % (routine["name"], result["response"]))
-        short_url, form_id = extract_forms(result["response"])
-        if short_url or form_id:
-            record_form(db_path, routine["id"], routine["name"], short_url, form_id)
+        if is_skip:
+            verification = {"status": "skipped", "checks": [{"type": "skip_no_class", "ok": True, "note": "Tidak ada kelas 30 menit lagi, pesan tidak dikirim"}]}
+        else:
+            store.add_message(db_path, bot["id"], "assistant",
+                              "[Routine: %s]\n%s" % (routine["name"], result["response"]))
+            short_url, form_id = extract_forms(result["response"])
+            if short_url or form_id:
+                record_form(db_path, routine["id"], routine["name"], short_url, form_id)
         # Phase 3: verifikasi ringan (BUKAN Chief) — cek output terhadap API.
         try:
             import verify as verify_mod
@@ -385,12 +422,12 @@ def execute_run(db_path, run_id):
                             "checks": [{"type": "postprocess_error", "ok": None,
                                         "note": "post-processing gagal: %s" % e}]}
     _finish_run(db_path, run_id, "done", result["response"], usage,
-                result.get("duration_seconds", 0), verification=verification)
+                result.get("duration_seconds", 0), verification=verification, skip_notify=is_skip)
     return get_run(db_path, run_id)
 
 
 def _finish_run(db_path, run_id, status, result_text, usage, duration,
-                verification=None):
+                verification=None, skip_notify=False):
     conn = store.connect(db_path)
     conn.execute(
         "UPDATE routine_runs SET status=?, result=?, input_tokens=?,"
@@ -407,6 +444,9 @@ def _finish_run(db_path, run_id, status, result_text, usage, duration,
     conn.close()
 
     # Phase 11 (notifikasi): catat event selesai + kirim push (best-effort).
+    # SKIP_NO_CLASS: tidak ada chat, tidak ada notifikasi sama sekali.
+    if skip_notify:
+        return
     # TIDAK BOLEH mengganggu penyelesaian run — semua error ditelan + log.
     try:
         import notifications as _notif
@@ -458,7 +498,7 @@ def sync_scheduler(scheduler, db_path):
             wanted[job_id(r["id"])] = r
     existing = {j.id for j in scheduler.get_jobs()}
     for jid, r in wanted.items():
-        trigger = CronTrigger.from_crontab(r["cron_expr"], timezone=TZ)
+        trigger = CronTrigger.from_crontab(cron_to_apscheduler(r["cron_expr"]), timezone=TZ)
         if jid in existing:
             job = scheduler.get_job(jid)
             if str(job.trigger) != str(trigger):

@@ -33,7 +33,9 @@ function botName(id) {
 async function loadRoutines() {
   const list = await api("/api/routines");
   const wrap = document.getElementById("routine-list");
+  const wrapOff = document.getElementById("routine-list-inactive");
   wrap.innerHTML = "";
+  if (wrapOff) wrapOff.innerHTML = "";
   if (!list.length) {
     wrap.innerHTML = `<p class="note">Belum ada routine. Tambah dari form di bawah.</p>`;
     return;
@@ -49,6 +51,7 @@ async function loadRoutines() {
         <div class="r-name">${esc(r.name)}</div>
         <div class="r-meta">${esc(botName(r.bot_id))} · ${esc(r.schedule_label)}</div>
         <div class="r-last">Run terakhir: ${last}</div>
+        <details class="fold"><summary>Lihat prompt</summary><pre class="prompt-pre">${esc(r.prompt || "")}</pre></details>
       </div>
       <div class="actions">
         <label class="switch" title="${r.enabled ? "Nonaktifkan" : "Aktifkan"}">
@@ -84,7 +87,7 @@ async function loadRoutines() {
       try { await api("/api/routines/" + r.id, { method: "DELETE" }); loadRoutines(); }
       catch (err) { alert("Gagal menghapus: " + err.message); }
     });
-    wrap.appendChild(card);
+    (r.enabled ? wrap : (wrapOff || wrap)).appendChild(card);
   }
 }
 

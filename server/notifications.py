@@ -121,6 +121,20 @@ def record_routine_finished(db_path, routine_id, routine_name, bot_name,
                         finished_at=finished_at)
 
 
+def record_chat_reply(db_path, bot_name, reply_text, status="done", finished_at=None):
+    """Called from app._run_chat_job (Alfi 29 Okt: tiap balasan chat jadi notif).
+    Best-effort: pemanggil menelan error, seperti hook routine."""
+    if status == "done":
+        title = "Balasan dari %s" % (bot_name or "Bot")
+    else:
+        title = "Chat gagal: %s" % (bot_name or "Bot")
+    return record_event(db_path, routine_id=0,
+                        routine_name="Chat",
+                        bot_name=bot_name or "",
+                        status=status, title=title,
+                        summary=_clean_summary(reply_text),
+                        finished_at=finished_at)
+
 def list_events(db_path, since=None, limit=50):
     """Events finished after `since` (ISO 8601, or None = latest).
 

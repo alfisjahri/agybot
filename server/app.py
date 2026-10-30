@@ -49,6 +49,7 @@ import agy_client
 import avatars
 import fcm
 import notifications
+import pairing
 import routines
 import store
 
@@ -153,13 +154,35 @@ def routines_page():
     return render_template("routines.html")
 
 
-@app.route("/api/bots", methods=["GET"])
+@app.route("/api/bots", methods=["GET", "POST"])
 def api_bots():
-    return jsonify(store.get_bots(DB))
+    if request.method == "GET":
+        return jsonify(store.get_bots(DB))
+    # Tambah bot, maksimal 20 bot.
+    if len(store.get_bots(DB)) >= 20:
+        return jsonify({"error": "maksimal 20 bot, hapus dulu satu bot sebelum menambah"}), 400
+    data = request.get_json(silent=True) or {}
+    if not (data.get("name") or "").strip():
+        return jsonify({"error": "nama bot wajib diisi"}), 400
+    if "model" in data and data["model"] not in agy_client.MODELS:
+        return jsonify({"error": "unknown model: %s" % data["model"]}), 400
+    if "effort" in data and data["effort"] not in agy_client.EFFORTS:
+        return jsonify({"error": "unknown effort: %s" % data["effort"]}), 400
+    return jsonify(store.create_bot(DB, data)), 201
 
 
-@app.route("/api/bots/<int:bot_id>", methods=["GET", "POST"])
+@app.route("/api/bots/<int:bot_id>", methods=["GET", "POST", "DELETE"])
 def api_bot(bot_id):
+    if request.method == "DELETE":
+        bot = store.get_bot(DB, bot_id)
+        if not bot:
+            return jsonify({"error": "bot not found"}), 404
+        ok, n = store.delete_bot(DB, bot_id)
+        if not ok:
+            return jsonify({"error": "bot ini masih punya %d routine, hapus routine-nya dulu" % n, "routines": n}), 409
+        if bot.get("avatar_image"):
+            _delete_avatar_file(bot["avatar_image"])
+        return jsonify({"ok": True})
     if request.method == "GET":
         bot = store.get_bot(DB, bot_id)
         return jsonify(bot) if bot else (jsonify({"error": "bot not found"}), 404)
@@ -307,9 +330,56 @@ def _save_chat_image(bot_id):
     return "/static/uploads/" + filename, path
 
 
+def _run_chat_job(job_id, bot, prompt):
+    """Worker background untuk satu chat job. Pola sama seperti routine:
+    thread terpisah, koneksi DB dibuka per panggilan store (aman thread)."""
+    try:
+        result = agy_client.call_agy(prompt, bot["model"], bot["effort"], cwd=WORKDIR)
+        if not result["ok"]:
+            reply = "Maaf, agy gagal: %s" % result.get("error", "unknown error")
+            store.add_message(DB, bot["id"], "assistant", reply)
+            store.update_chat_job(DB, job_id, "failed", reply=reply, ok=False,
+                                  error=result.get("error"),
+                                  duration_seconds=result.get("duration_seconds"))
+            try:
+                notifications.record_chat_reply(DB, bot["name"], reply,
+                                                status="failed", finished_at=int(time.time()))
+            except Exception as _e:
+                print("WARNING: notifikasi chat gagal (job %s): %s" % (job_id, _e), flush=True)
+            return
+        store.add_message(DB, bot["id"], "assistant", result["response"])
+        store.record_usage(DB, bot["id"], bot["model"], result["usage"],
+                           result.get("duration_seconds", 0))
+        store.update_chat_job(DB, job_id, "done", reply=result["response"], ok=True,
+                              duration_seconds=result.get("duration_seconds"),
+                              usage=result["usage"])
+        try:
+            notifications.record_chat_reply(DB, bot["name"], result["response"],
+                                            status="done", finished_at=int(time.time()))
+        except Exception as _e:
+            print("WARNING: notifikasi chat gagal (job %s): %s" % (job_id, _e), flush=True)
+    except Exception as e:
+        try:
+            reply = "Maaf, agy gagal: %s" % e
+            store.add_message(DB, bot["id"], "assistant", reply)
+            store.update_chat_job(DB, job_id, "failed", reply=reply, ok=False, error=str(e))
+        except Exception:
+            pass
+        try:
+            notifications.record_chat_reply(DB, bot["name"], reply,
+                                            status="failed", finished_at=int(time.time()))
+        except Exception as _e:
+            print("WARNING: notifikasi chat gagal (job %s): %s" % (job_id, _e), flush=True)
+
+
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     # Dua bentuk: JSON biasa, atau multipart (message + file gambar).
+    # ASYNC (29 Okt 2026): endpoint ini TIDAK menunggu agy. Ia hanya
+    # menyimpan pesan + membuat job + menjalankan agy di background thread,
+    # lalu langsung balas 202 {job_id}. Frontend polling
+    # GET /api/chat/jobs/<id> sampai done/failed. Jadi tidak ada request
+    # yang menggantung >100 detik dan Cloudflare tidak sempat 504.
     if request.content_type and "multipart/form-data" in request.content_type:
         bot_id = request.form.get("bot_id")
         message = (request.form.get("message") or "").strip()
@@ -332,27 +402,46 @@ def api_chat():
         if image_abs_path in ("FORMAT_TIDAK_DIDUKUNG", "TERLALU_BESAR"):
             return jsonify({"error": "gambar harus %s, max 5 MB"
                             % ", ".join(sorted(avatars.ALLOWED_EXTS))}), 400
-    stored_message = message
-    if image_web_path:
-        stored_message = "[gambar: %s]\n%s" % (image_web_path, message)
-    store.add_message(DB, bot_id, "user", stored_message)
-    history = store.get_messages(DB, bot_id, limit=8)
-    prompt = build_prompt(bot, history, message, image_path=image_abs_path)
-    result = agy_client.call_agy(prompt, bot["model"], bot["effort"], cwd=WORKDIR)
-    if not result["ok"]:
-        reply = "Maaf, agy gagal: %s" % result.get("error", "unknown error")
-        store.add_message(DB, bot_id, "assistant", reply)
-        return jsonify({"reply": reply, "ok": False,
-                        "error": result.get("error"),
-                        "duration_seconds": result.get("duration_seconds")})
-    store.add_message(DB, bot_id, "assistant", result["response"])
-    store.record_usage(DB, bot_id, bot["model"], result["usage"],
-                       result.get("duration_seconds", 0))
-    return jsonify({"reply": result["response"], "ok": True,
-                    "usage": result["usage"],
-                    "duration_seconds": result.get("duration_seconds"),
-                    "conversation_id": result.get("conversation_id"),
-                    "image": image_web_path})
+    pending = store.pending_chat_job(DB, bot_id)
+    if pending:
+        return jsonify({"job_id": pending["id"], "status": "pending",
+                        "error": "bot masih bekerja"}), 409
+    job_id = store.create_chat_job(DB, bot_id)
+    try:
+        stored_message = message
+        if image_web_path:
+            stored_message = "[gambar: %s]\n%s" % (image_web_path, message)
+        store.add_message(DB, bot_id, "user", stored_message)
+        # HEMAT TOKEN (29 Okt 2026): history chat dipangkas sebelum dikirim
+        # ke agy. Pesan routine ([Routine:...]) tidak ikut (itu laporan,
+        # bukan percakapan), ambil 6 terakhir saja, dan potong pesan yang
+        # lebih dari 1500 karakter. UI tetap menampilkan history lengkap;
+        # yang dipangkas hanya konteks prompt.
+        raw_history = store.get_messages(DB, bot_id, limit=20)
+        history = [m for m in raw_history
+                   if not (m["content"] or "").startswith("[Routine:")][-6:]
+        trimmed = []
+        for m in history:
+            c = m["content"] or ""
+            if len(c) > 1500:
+                c = c[:1500] + "… [dipotong]"
+            trimmed.append({"role": m["role"], "content": c})
+        prompt = build_prompt(bot, trimmed, message, image_path=image_abs_path)
+    except Exception as e:
+        store.update_chat_job(DB, job_id, "failed", reply="Maaf, agy gagal: %s" % e,
+                              ok=False, error=str(e))
+        return jsonify({"error": str(e)}), 500
+    t = threading.Thread(target=_run_chat_job, args=(job_id, bot, prompt), daemon=True)
+    t.start()
+    return jsonify({"job_id": job_id, "status": "pending"}), 202
+
+
+@app.route("/api/chat/jobs/<int:job_id>", methods=["GET"])
+def api_chat_job(job_id):
+    job = store.get_chat_job(DB, job_id)
+    if not job:
+        return jsonify({"error": "job not found"}), 404
+    return jsonify(job)
 
 
 @app.route("/api/usage", methods=["GET"])
@@ -502,6 +591,49 @@ def api_notifications_test():
         routine_name=(data.get("routine_name") or "Tes Notifikasi"),
         bot_name="", status="done", title=title, summary=summary)
     return jsonify(event), 201
+
+
+# ---------------------------------------------------------------- pairing QR
+# Halaman pairing untuk scan QR dari terminal (pair.py / installer).
+# Token sekali pakai, kedaluwarsa 10 menit (lihat pairing.py).
+@app.route("/pair/<token>")
+def pair_page(token):
+    from urllib.parse import quote
+    entry = pairing.get_token(token)
+    if entry is None:
+        return ("<html><body style='background:#1a1a1a;color:#eaf1f8;"
+                "font-family:sans-serif;text-align:center;padding:48px 24px'>"
+                "<h2>Link pairing tidak valid</h2>"
+                "<p>Token sudah dipakai atau kedaluwarsa. Minta QR baru dari "
+                "terminal server (jalankan <code>python3 pair.py</code>).</p>"
+                "</body></html>"), 404
+    url = entry["public_url"]
+    deep = "agybot://pair?url=%s&token=%s" % (quote(url, safe=""), quote(token, safe=""))
+    apk = "https://github.com/alfisjahri/agybot/releases/latest"
+    return ("<html><body style='background:#1a1a1a;color:#eaf1f8;"
+            "font-family:sans-serif;text-align:center;padding:48px 24px'>"
+            "<h2>AgyBot — hubungkan HP</h2>"
+            "<p>Server: <b>%s</b></p>"
+            "<p><a href='%s' style='display:inline-block;background:#007cf7;"
+            "color:#fff;padding:12px 24px;border-radius:10px;"
+            "text-decoration:none'>Buka di aplikasi AgyBot</a></p>"
+            "<p>Belum install aplikasi? <a href='%s' style='color:#007cf7'>"
+            "Unduh APK di GitHub Releases</a>, lalu scan ulang QR ini.</p>"
+            "<p style='color:#979797;font-size:13px'>Atau isi manual di layar "
+            "setup aplikasi:<br>URL: <code>%s</code><br>Token: "
+            "<code>%s</code></p>"
+            "</body></html>" % (url, deep, apk, url, token))
+
+
+@app.route("/api/pair/claim", methods=["POST"])
+def api_pair_claim():
+    """Klaim token pairing (dipanggil APK setelah deep link)."""
+    data = request.get_json(silent=True) or {}
+    entry = pairing.claim_token(data.get("token") or "",
+                                 device=data.get("device") or "")
+    if entry is None:
+        return jsonify({"ok": False, "error": "token tidak valid / kedaluwarsa"}), 400
+    return jsonify({"ok": True, "server_url": entry["public_url"]})
 
 
 if __name__ == "__main__":
